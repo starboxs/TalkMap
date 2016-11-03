@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "165854521120",
+    "firebase_url": "https://talkmap-6c910.firebaseio.com",
+    "project_id": "talkmap-6c910",
+    "storage_bucket": "talkmap-6c910.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:165854521120:android:dfefffcf5ab3f874",
+        "android_client_info": {
+          "package_name": "com.example.marco.talkmap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "165854521120-qs85j3jivk6gtmp3352bvbmrlh76elp5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUkzbZLZip-mwJIgMwjSA0DCVljDLkvPk"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
