@@ -1,15 +1,18 @@
 package com.example.marco.talkmap;
 
+import android.app.Dialog;
+import android.content.ClipData;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
-import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Path;
 import android.location.Criteria;
@@ -18,11 +21,10 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
 import android.util.Base64;
-import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -32,7 +34,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -49,6 +53,7 @@ import com.facebook.FacebookSdk;
 import com.facebook.GraphRequest;
 import com.facebook.GraphResponse;
 import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.firebase.client.DataSnapshot;
@@ -57,7 +62,6 @@ import com.firebase.client.FirebaseError;
 import com.firebase.client.ValueEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.games.internal.request.RequestUpdateOutcomes;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -67,7 +71,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 
 
@@ -75,8 +78,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -84,21 +85,29 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, LocationListener {
 
-    public static final int LOCATION_UPDATE_MIN_DISTANCE = 10;
-    public static final int LOCATION_UPDATE_MIN_TIME = 5000;
+
+    private String user_name = "";
+    private String user_team = "";
+
+    private  Menu action_menu ;
+
+    private String Firebase_url = "https://talkmap-6c910.firebaseio.com/";
+
+
+    private static final String quick_save = "Quick_Save";
+    private static final String title_name = "Title_Name";
+    private static final String title_team = "Title_Team";
+
     private SQLite db;
     private ListView lv_msg;
     private ArrayList<Obj_Marker> data = new ArrayList<Obj_Marker>();
     private ArrayList<Obj_Msg> data_msg = new ArrayList<Obj_Msg>();
     private Button button, btn_msg;
-    private EditText editText, et_msg;
+    private EditText et_msg;
     private DatabaseReference mDatabase;
     private LinearLayout linear_msg;
     private Bitmap pic = null;
@@ -106,7 +115,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private CallbackManager callbackManager;
     private LoginButton loginButton;
     private Adapter_msg am;
-    private ImageView msg_close;
+    private ImageView msg_close , msg_clean;
+    private SharedPreferences settings;
     private MapView mMapView;
     private String bestProvider = LocationManager.GPS_PROVIDER;
     private GoogleMap mGoogleMap;
@@ -124,32 +134,42 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     };
     Firebase ref;
-
+    AccessToken accessToken;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         SimpleDateFormat sdf = new SimpleDateFormat("MM 月 dd 日 HH 時 mm 分 ss 秒");
         System.out.println("===========================(校正)" + sdf.format(new Date()) + "(校正)===========================");
         //不關閉螢幕
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        db = new SQLite(this);
-        //  db.insert_msg("marco","go","11:11");
-
-         db.delete_msg();
-
+        //Facebook 初始化
         FacebookSdk.sdkInitialize(this);
+        //設定主畫面
         setContentView(R.layout.activity_main);
+        //解決軟件盤擋到edittext
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+        db = new SQLite(this);
+        db.delete_msg();
+
+
+        //讀取快速儲存資料
+        settings = getSharedPreferences(quick_save, 0);
+
+
+
         callbackManager = CallbackManager.Factory.create();
-        AccessToken accessToken = AccessToken.getCurrentAccessToken();
+        accessToken = AccessToken.getCurrentAccessToken();
+        System.out.println("FB註冊開始執行時:"+accessToken);
+
         MapsInitializer.initialize(getApplicationContext());
         Firebase.setAndroidContext(this);
-        ref = new Firebase("https://talkmap-6c910.firebaseio.com/");
+        ref = new Firebase(Firebase_url);
         androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+
 
         Firebase_read();
 
-
+        readData();
         //取得系統定位服務
         LocationManager status = (LocationManager) (this.getSystemService(Context.LOCATION_SERVICE));
         if (status.isProviderEnabled(LocationManager.GPS_PROVIDER) || status.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
@@ -167,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppEventsLogger.activateApp(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+
         mMapView = (MapView) findViewById(R.id.mapview);
         setSupportActionBar(toolbar);
 
@@ -177,7 +198,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
 
         mMapView.onCreate(savedInstanceState);
         mGoogleMap = mMapView.getMap();
@@ -190,15 +210,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onStart() {
         super.onStart();
+
+
+        System.out.println("menu完成onstart");
         Firebase_Write(null, "true", null, null, null, null, null);
         lv_msg = (ListView) findViewById(R.id.lv_msg);
-        msg_close =(ImageView)findViewById(R.id.msg_close);
+        msg_close = (ImageView) findViewById(R.id.msg_close);
+       // msg_clean= (ImageView) findViewById(R.id.msg_clean);
         am = new Adapter_msg(this);
-        linear_msg = (LinearLayout)findViewById(R.id.linear_msg);
+        linear_msg = (LinearLayout) findViewById(R.id.linear_msg);
         lv_msg.setAdapter(am);
-        editText = (EditText) findViewById(R.id.editText);
+
         et_msg = (EditText) findViewById(R.id.et_msg);
-        button = (Button) findViewById(R.id.button);
+
+//        msg_clean.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                db.delete_msg();
+//                data_msg = db.select_msg();
+//                am.change(data_msg);
+//            }
+//        });
+
         btn_msg = (Button) findViewById(R.id.btn_msg);
         btn_msg.setOnClickListener(new View.OnClickListener() {
 
@@ -206,29 +239,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public void onClick(View v) {
 
-                SimpleDateFormat sdf = new SimpleDateFormat("MM:dd HH:mm:ss");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss");
 
 
                 Firebase_Write(null, null, null, null, null, et_msg.getText().toString(), sdf.format(new Date()));
-            }
-        });
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Firebase_Write(editText.getText().toString(), null, null, null, null, null, null);
             }
         });
         msg_close.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                if(msg_close_boolean)
-                {
+                if (msg_close_boolean) {
                     linear_msg.setVisibility(View.INVISIBLE);
                     msg_close_boolean = false;
-                }
-                else
-                {
+                } else {
                     linear_msg.setVisibility(View.VISIBLE);
                     msg_close_boolean = true;
                 }
@@ -237,9 +261,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
     }
-boolean msg_close_boolean = true;
+
+
+    boolean msg_close_boolean = true;
+
     public void Firebase_Write(String name, String online, String lat, String lon, String image, String msg, String time) {
-      //  System.out.println("uuid:" + UUID.randomUUID().toString());
+        //  System.out.println("uuid:" + UUID.randomUUID().toString());
         //team           //uuid                         //屬性            //變數
 
         if (name != null) {
@@ -274,7 +301,7 @@ boolean msg_close_boolean = true;
 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                System.out.println("收到Firebase訊息："+dataSnapshot.toString());
+                System.out.println("收到Firebase訊息：" + dataSnapshot.toString());
                 System.out.println("");
                 if (data.size() == 0) {
                     for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
@@ -297,7 +324,7 @@ boolean msg_close_boolean = true;
                         om.setMsg((String) chatSnapshot.child("Msg").getValue());
 //                        System.out.println("收到Firebase訊息6:" + (String) chatSnapshot.child("online").getValue());
 //                        om.setOnline((String) chatSnapshot.child("online").getValue());
-                        db.insert_msg((String)chatSnapshot.child("name").getValue() ,(String)chatSnapshot.child("Msg").getValue() ,(String)chatSnapshot.child("time").getValue());
+                        db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
 
                         System.out.println("收到Firebase訊息結束初始化data無資料");
                         data.add(om);
@@ -340,8 +367,8 @@ boolean msg_close_boolean = true;
                                     data.get(i).setOnline((String) chatSnapshot.child("online").getValue());
 
 
-                                    db.insert_msg((String)chatSnapshot.child("name").getValue() ,(String)chatSnapshot.child("Msg").getValue() ,(String)chatSnapshot.child("time").getValue());
-                                    data_msg  = db.select_msg();
+                                    db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
+                                    data_msg = db.select_msg();
                                     am.change(data_msg);
 
                                     System.out.println("收到Firebase訊息結束");
@@ -379,6 +406,7 @@ boolean msg_close_boolean = true;
         getLocation(location);
     }
 
+
     private void getLocation(Location location) {    //將定位資訊顯示在畫面中
         if (location != null) {
 
@@ -408,6 +436,8 @@ boolean msg_close_boolean = true;
     protected void onResume() {
         super.onResume();
         mMapView.onResume();
+
+
         System.out.println("進入onResume");
         if (getService) {
             System.out.println("進入定位onResume");
@@ -426,9 +456,9 @@ boolean msg_close_boolean = true;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        if (getService) {
-            lms.removeUpdates(this);    //離開頁面時停止更新
-        }
+//        if (getService || lms ==null) {
+//            lms.removeUpdates(this);    //離開頁面時停止更新
+//        }
     }
 
     public void facebook() {
@@ -449,13 +479,13 @@ boolean msg_close_boolean = true;
 
                     @Override
                     public void onCompleted(JSONObject object, GraphResponse response) {
-                        System.out.println("id=" + object.optString("id"));
-                        System.out.println("email=" + object.optString("email"));
-                        System.out.println("last_name=" + object.optString("last_name"));
-                        System.out.println("first name=" + object.optString("first_name"));
-                        System.out.println("address=" + object.optString("address"));//NO
-                        System.out.println("gender=" + object.optString("gender"));
-                        System.out.println("birthday=" + object.optString("birthday"));
+                        System.out.println("FB註冊id=" + object.optString("id"));
+                        System.out.println("FB註冊email=" + object.optString("email"));
+                        System.out.println("FB註冊last_name=" + object.optString("last_name"));
+                        System.out.println("FB註冊first name=" + object.optString("first_name"));
+                        System.out.println("FB註冊address=" + object.optString("address"));//NO
+                        System.out.println("FB註冊gender=" + object.optString("gender"));
+                        System.out.println("FB註冊birthday=" + object.optString("birthday"));
                         JSONObject data = response.getJSONObject();
                         if (data.has("picture")) {
                             try {
@@ -509,6 +539,87 @@ boolean msg_close_boolean = true;
                 System.out.println("錯誤");
             }
         });
+
+        LoginManager.getInstance().registerCallback(callbackManager,
+                new FacebookCallback<LoginResult>() {
+                    @Override
+                    public void onSuccess(LoginResult loginResult) {
+                        System.out.println("FB註冊成功");
+
+                        AccessToken accessToken = AccessToken.getCurrentAccessToken();
+
+                        System.out.println("FB註冊成功token:" + accessToken);
+                        GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
+
+
+                            @Override
+                            public void onCompleted(JSONObject object, GraphResponse response) {
+
+                                System.out.println("FB註冊成功id=" + object.optString("id"));
+                                System.out.println("FB註冊成功email=" + object.optString("email"));
+                                System.out.println("FB註冊成功last_name=" + object.optString("last_name"));
+                                System.out.println("FB註冊成功first name=" + object.optString("first_name"));
+                                System.out.println("FB註冊成功address=" + object.optString("address"));//NO
+                                System.out.println("FB註冊成功gender=" + object.optString("gender"));
+                                System.out.println("FB註冊成功birthday=" + object.optString("birthday"));
+                                JSONObject data = response.getJSONObject();
+                                if (data.has("picture")) {
+                                    try {
+                                        String profilePicUrl = data.getJSONObject("picture").getJSONObject("data").getString("url");
+                                        System.out.println("FB註冊成功url:" + profilePicUrl);
+
+                                        // Firebase_Write(null, null, null, null, profilePicUrl, null, null);
+                                        final Bitmap[] image = new Bitmap[1];
+                                        try {
+                                            final URL url = new URL(profilePicUrl);
+
+                                            new Thread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    try {
+
+                                                        image[0] = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                                                        pic = zoomImage(image[0], 100, 100);
+                                                    } catch (IOException e) {
+                                                        e.printStackTrace();
+                                                        System.out.println("FB註冊成功picture錯誤:" + e);
+                                                    }
+                                                }
+                                            }).start();
+
+
+                                        } catch (IOException e) {
+                                            System.out.println(e);
+                                        }
+
+
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                    // set profile image to imageview using Picasso or Native methods
+                                }
+
+                            }
+                        });
+                        Bundle parameters = new Bundle();
+                        parameters.putString("fields", "id,name,email,gender,birthday,picture.type(large)");
+                        request.setParameters(parameters);
+                        request.executeAsync();
+
+
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        Toast.makeText(MainActivity.this, "Login Cancel", Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onError(FacebookException exception) {
+                        Toast.makeText(MainActivity.this, exception.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
+
 
     }
 
@@ -639,7 +750,7 @@ boolean msg_close_boolean = true;
             System.out.println("連線個數：" + data.size());
             BitmapDescriptor icon = null;
             if (data.get(i).getPic() == null) {
-                icon = BitmapDescriptorFactory.fromBitmap(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.title), 100, 100));
+                icon = BitmapDescriptorFactory.fromBitmap(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.unknow), 100, 100));
             } else {
                 icon = BitmapDescriptorFactory.fromBitmap(data.get(i).getPic());
 
@@ -733,6 +844,13 @@ boolean msg_close_boolean = true;
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
+        if(AccessToken.getCurrentAccessToken() != null && com.facebook.Profile.getCurrentProfile() != null)
+        {
+            MenuItem menuItem = menu.findItem(R.id.action_FBlogin);
+            menuItem.setTitle("FB登出");
+        }
+
+
         return true;
     }
 
@@ -745,11 +863,64 @@ boolean msg_close_boolean = true;
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+
+            System.out.println("設定");
+
+            final Dialog dialog = new Dialog(MainActivity.this);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_login);
+            dialog.setCancelable(false);
+
+
+            Button checklogin = (Button) dialog.findViewById(R.id.check_login);
+            final EditText set_name = (EditText) dialog.findViewById(R.id.set_name);
+            final EditText set_team = (EditText) dialog.findViewById(R.id.set_team);
+            checklogin.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    //  System.out.println("googogogogogog:"+set_name.getText().toString() +" "+ set_team.getText().toString());
+
+                    saveData(set_name.getText().toString(), set_team.getText().toString());
+                    readData();
+                    dialog.dismiss();
+                }
+            });
+
+            dialog.getWindow().setLayout(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            dialog.show();
+
+
             return true;
         }
 
+        if (id == R.id.action_FBlogin) {
+
+
+
+            if (AccessToken.getCurrentAccessToken() != null && com.facebook.Profile.getCurrentProfile() != null) {
+
+                System.out.println("FB註冊登出");
+                LoginManager.getInstance().logOut();
+
+                item.setTitle("FB登入");
+
+            } else {
+                System.out.println("FB註冊登入");
+                LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile"));
+
+                item.setTitle("FB登出");
+            }
+
+
+            return true;
+        }
+
+
         return super.onOptionsItemSelected(item);
     }
+
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
@@ -776,6 +947,59 @@ boolean msg_close_boolean = true;
         return true;
     }
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // TODO Auto-generated method stub
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) { // 攔截返回鍵
+            new AlertDialog.Builder(this)
+                    .setTitle("確認視窗")
+                    .setMessage("確定要結束應用程式嗎?")
+                    .setPositiveButton("確定",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Firebase_Write(null, "false", null, null, null, null, null);
+                                    finish();
+                                }
+                            })
+                    .setNegativeButton("取消",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                }
+                            }).show();
+        }
+        return true;
+    }
+
+
+    public void saveData(String name, String team) {
+        if (name != null) {
+            settings.edit().putString(title_name, name).commit();
+        }
+        if (team != null) {
+            settings.edit().putString(title_team, team).commit();
+        }
+    }
+
+    public void readData() {
+        user_name = ((settings.getString(title_name, "")));
+        user_team = ((settings.getString(title_team, "")));
+
+        if(user_name!=null)
+        {
+            Firebase_Write(user_name, null, null, null, null, null, null);
+
+        }
+        if(user_team !=null)
+        {
+
+
+        }
+
+    }
+
 
     //GPS 定位
     @Override
@@ -798,4 +1022,6 @@ boolean msg_close_boolean = true;
     public void onProviderDisabled(String provider) {
 
     }
+
+
 }

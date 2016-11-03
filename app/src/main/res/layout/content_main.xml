@@ -20,32 +20,22 @@
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:gravity="center">
+            android:gravity="center"
+            android:visibility="gone">
 
             <com.facebook.login.widget.LoginButton
                 android:id="@+id/login_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal" />
+                android:layout_gravity="center_horizontal"
+                android:visibility="visible" />
 
-            <EditText
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/editText"
-                android:layout_weight="1" />
-
-            <Button
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="New Button"
-                android:id="@+id/button"
-                android:layout_gravity="right" />
         </LinearLayout>
 
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
-            android:layout_height="430dp">
+            android:layout_height="475dp">
 
             <com.google.android.gms.maps.MapView
                 android:id="@+id/mapview"
@@ -57,13 +47,19 @@
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical">
+            android:layout_height="45dp"
+            android:gravity="center"
+            android:paddingBottom="5dp">
 
             <EditText
                 android:layout_width="250dp"
-                android:layout_height="wrap_content"
-                android:id="@+id/et_msg" />
+                android:layout_height="30dp"
+                android:id="@+id/et_msg"
+                android:textCursorDrawable="@null"
+                android:visibility="visible"
+                android:background="@drawable/rect_text_edit"
+                android:singleLine="true"
+                android:paddingLeft="5dp" />
 
             <Button
                 android:layout_width="wrap_content"
@@ -76,10 +72,23 @@
 
     <LinearLayout
         android:orientation="vertical"
-        android:layout_width="match_parent"
+        android:layout_width="210dp"
         android:layout_height="match_parent"
         android:layout_marginTop="300dp"
         android:layout_marginRight="100dp">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="205dp"
+            android:layout_height="190dp"
+            android:id="@+id/linear_msg">
+
+            <ListView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/lv_msg"
+                android:background="#5ae7f4c5" />
+        </LinearLayout>
 
         <LinearLayout
             android:orientation="horizontal"
@@ -96,20 +105,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:id="@+id/imageView2" />
-        </LinearLayout>
 
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="205dp"
-            android:layout_height="match_parent"
-            android:id="@+id/linear_msg">
-
-            <ListView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/lv_msg"
-                android:layout_marginBottom="40dp"
-                android:background="#5ae7f4c5" />
         </LinearLayout>
 
     </LinearLayout>
