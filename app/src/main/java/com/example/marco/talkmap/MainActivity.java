@@ -71,6 +71,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.wearable.DataApi;
 import com.google.firebase.database.DatabaseReference;
 
 
@@ -97,6 +98,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private String Firebase_url = "https://talkmap-6c910.firebaseio.com/";
 
+    private LinearLayout test_layout;
 
     private static final String quick_save = "Quick_Save";
     private static final String title_name = "Title_Name";
@@ -162,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
 
+
         Firebase_read();
 
         readData();
@@ -208,10 +211,52 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    public void addview()
+    {
+test_layout.removeAllViews();
+        for(int i = 0  ; i<data_list.size();i++ )
+        {
+
+            im = new ImageView(this);
+            im.setTag(data_list.get(i).getName().toString());
+            im.setImageBitmap(data_list.get(i).getPic());
+            im.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    System.out.println("test按鈕"+v.getTag());
+
+                    for(int i =  0 ; i<data_list.size();i++ )
+                    {
+                        if(data_list.get(i).getName() ==v.getTag())
+                        {
+                            LatLng gps = new LatLng(Double.parseDouble(data_list.get(i).getLat()), Double.parseDouble(data_list.get(i).getLon()));
+                                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+                        }
+
+                    }
+
+
+
+
+
+                }
+            });
+            test_layout.addView(im , 120 ,120 );
+        }
+    }
+
+
+    private ImageView im;
+    private int CurrentButtonNumber = 0; //CurrentButtonNumber流水號 設定物件ID
+
     @Override
     protected void onStart() {
         super.onStart();
 
+        test_layout = (LinearLayout)findViewById(R.id.test_layout);
+
+       // setContentView(test_layout);
+        addview();
         Firebase_Write(null, "true", null, null, null, null, null);
         Firebase_Write(null, "true", null, null, null, "", "");
         lv_msg = (ListView) findViewById(R.id.lv_msg);
@@ -222,6 +267,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         lv_msg.setAdapter(am);
 
         et_msg = (EditText) findViewById(R.id.et_msg);
+
+
 
 //        msg_clean.setOnClickListener(new View.OnClickListener() {
 //            @Override
@@ -379,6 +426,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         if(drawMarker_bool)
                         {
                             drawMarker(null, pic , data_list);
+                            addview();
                         }
                     }
                 }
@@ -725,6 +773,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             BitmapDescriptor icon = null;
             if (datalist.get(i).getPic() == null) {
                 icon = BitmapDescriptorFactory.fromBitmap(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.unknow), 100, 100));
+                datalist.get(i).setPic(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.unknow), 100, 100));
             } else {
                 icon = BitmapDescriptorFactory.fromBitmap(datalist.get(i).getPic());
 
@@ -740,7 +789,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                   if(datalist.get(i).getLat() != null &datalist.get(i).getLon() != null)
                   {
-                      System.out.println("大暴死:"+datalist.get(i).getLat());
                       LatLng gps = new LatLng(Double.parseDouble(datalist.get(i).getLat()), Double.parseDouble(datalist.get(i).getLon()));
                       marker = mGoogleMap.addMarker(new MarkerOptions()
                               .position(gps)

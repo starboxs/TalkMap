@@ -49,7 +49,8 @@
             android:layout_width="match_parent"
             android:layout_height="45dp"
             android:gravity="center"
-            android:paddingBottom="5dp">
+            android:paddingBottom="5dp"
+            android:background="#484848">
 
             <EditText
                 android:layout_width="250dp"
@@ -64,9 +65,9 @@
             <Button
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="訊息"
+                android:text="傳送"
                 android:id="@+id/btn_msg"
-                android:layout_marginBottom="2dp" />
+                android:layout_marginBottom="1dp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -107,6 +108,15 @@
                 android:id="@+id/imageView2" />
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="300dp"
+        android:layout_height="60dp"
+        android:layout_marginTop="60dp"
+        android:id="@+id/test_layout">
 
     </LinearLayout>
 
