@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="300dp"
     android:layout_height="300dp"
-    android:background="#e7ffb7"
+    android:background="#ffffff"
     android:orientation="vertical">
 
     <FrameLayout
@@ -14,7 +14,7 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_gravity="top"
-            android:background="#7bff00"></LinearLayout>
+            android:background="#5e5e5e"></LinearLayout>
 
         <LinearLayout
             android:orientation="vertical"
@@ -80,12 +80,23 @@
 
                 <Button
                     android:layout_width="60dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="取消"
+                    android:id="@+id/check_cencel"
+                    android:layout_weight="0.14"
+                    android:layout_marginBottom="5dp"
+                    android:background="@color/background_material_light" />
+
+                <Button
+                    android:layout_width="60dp"
+                    android:layout_height="40dp"
                     android:text="確認"
                     android:id="@+id/check_login"
                     android:layout_weight="0.14"
-                    android:background="@drawable/button_green"
-                    android:layout_marginBottom="5dp" />
+                    android:background="@color/background_material_dark"
+                    android:layout_marginBottom="5dp"
+                    android:textColor="@color/button_material_light" />
+
             </LinearLayout>
 
         </LinearLayout>
@@ -95,6 +106,6 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_gravity="bottom"
-            android:background="#ffbe25"></LinearLayout>
+            android:background="#000000"></LinearLayout>
     </FrameLayout>
 </LinearLayout>

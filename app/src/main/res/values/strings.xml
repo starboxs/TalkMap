@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">talkmap</string>
+    <string name="app_name">Talkmap</string>
     <string name="facebook_app_id">238213903260899</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

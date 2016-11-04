@@ -17,8 +17,8 @@ public class Obj_Marker {
     private String phoneid;
     private String msg ;
     private String image ;
-    private String lat ;
-    private String lon ;
+    private String lat ="0" ;
+    private String lon ="0" ;
     private String name ;
     private String online ;
     private Bitmap pic = null ;

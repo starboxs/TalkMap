@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String user_name = "";
     private String user_team = "";
 
-    private  Menu action_menu ;
+    private Menu action_menu;
 
     private String Firebase_url = "https://talkmap-6c910.firebaseio.com/";
 
@@ -101,10 +101,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String quick_save = "Quick_Save";
     private static final String title_name = "Title_Name";
     private static final String title_team = "Title_Team";
-
+    private LocationManager lms;
     private SQLite db;
     private ListView lv_msg;
-    private ArrayList<Obj_Marker> data = new ArrayList<Obj_Marker>();
+    private ArrayList<Obj_Marker> data_list = new ArrayList<Obj_Marker>();
     private ArrayList<Obj_Msg> data_msg = new ArrayList<Obj_Msg>();
     private Button button, btn_msg;
     private EditText et_msg;
@@ -115,26 +115,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private CallbackManager callbackManager;
     private LoginButton loginButton;
     private Adapter_msg am;
-    private ImageView msg_close , msg_clean;
+    private ImageView msg_close, msg_clean;
     private SharedPreferences settings;
     private MapView mMapView;
     private String bestProvider = LocationManager.GPS_PROVIDER;
     private GoogleMap mGoogleMap;
+    private Firebase ref;
+    private AccessToken accessToken;
+    private boolean drawMarker_bool = false;
+    //使用Google的GPS系統
     private GoogleMap.OnMyLocationChangeListener myLocationChangeListener = new GoogleMap.OnMyLocationChangeListener() {
         @Override
         public void onMyLocationChange(Location location) {
             double now_lat = location.getLatitude();
             double now_lng = location.getLongitude();
-
             Firebase_Write(null, null, now_lat + "", now_lng + "", null, null, null);
-
+            drawMarker_bool = true;
             //  drawMarker(location, pic);
             // System.out.println("追蹤現在座標：" + now_lng + "  " + now_lat);
-
         }
     };
-    Firebase ref;
-    AccessToken accessToken;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -150,17 +152,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
         db = new SQLite(this);
         db.delete_msg();
-
-
         //讀取快速儲存資料
         settings = getSharedPreferences(quick_save, 0);
-
-
-
         callbackManager = CallbackManager.Factory.create();
         accessToken = AccessToken.getCurrentAccessToken();
-        System.out.println("FB註冊開始執行時:"+accessToken);
-
         MapsInitializer.initialize(getApplicationContext());
         Firebase.setAndroidContext(this);
         ref = new Firebase(Firebase_url);
@@ -187,19 +182,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppEventsLogger.activateApp(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-
+        toolbar.setTitle("TalkMap");
+        toolbar.setLogo(R.mipmap.logo);
         mMapView = (MapView) findViewById(R.id.mapview);
         setSupportActionBar(toolbar);
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
-        toggle.syncState();
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
+        //側邊欄呈現
+//        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+//        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+//                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+//        drawer.setDrawerListener(toggle);
+//        toggle.syncState();
+//        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+//        navigationView.setNavigationItemSelectedListener(this);
 
-        mMapView.onCreate(savedInstanceState);
+        try {
+            mMapView.onCreate(savedInstanceState);
+        } catch (Exception e) {
+            System.out.println("mMapView.onCreate err:" + e);
+        }
         mGoogleMap = mMapView.getMap();
         key();
         initMap();
@@ -211,12 +212,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onStart() {
         super.onStart();
 
-
-        System.out.println("menu完成onstart");
         Firebase_Write(null, "true", null, null, null, null, null);
+        Firebase_Write(null, "true", null, null, null, "", "");
         lv_msg = (ListView) findViewById(R.id.lv_msg);
         msg_close = (ImageView) findViewById(R.id.msg_close);
-       // msg_clean= (ImageView) findViewById(R.id.msg_clean);
+        // msg_clean= (ImageView) findViewById(R.id.msg_clean);
         am = new Adapter_msg(this);
         linear_msg = (LinearLayout) findViewById(R.id.linear_msg);
         lv_msg.setAdapter(am);
@@ -265,12 +265,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     boolean msg_close_boolean = true;
 
+    /**
+     * 寫入Firebase
+     **/
     public void Firebase_Write(String name, String online, String lat, String lon, String image, String msg, String time) {
         //  System.out.println("uuid:" + UUID.randomUUID().toString());
         //team           //uuid                         //屬性            //變數
 
+
+        if(name == "false" && online == "false" &&lat == "false" &&lon == "false" &&image == "false" &&msg == "false" &&time == "false" )
+        {
+
+            return;
+        }
+
+
         if (name != null) {
             ref.child("TalkMap").child("Marco").child(androidId).child("name").setValue(name);
+
         }
         if (online != null) {
             ref.child("TalkMap").child("Marco").child(androidId).child("online").setValue(online);
@@ -292,119 +304,97 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
     }
-
+    /**
+     * 讀取Firebase
+     **/
+    private  boolean destroy =true;
     public void Firebase_read() {
         System.out.println("資料庫");
 
-        ref.child("TalkMap").child("Marco").addValueEventListener(new ValueEventListener() {
+        if(destroy)
+        {
+            ref.child("TalkMap").child("Marco").addValueEventListener(new ValueEventListener() {
 
 
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                System.out.println("收到Firebase訊息：" + dataSnapshot.toString());
-                System.out.println("");
-                if (data.size() == 0) {
-                    for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    System.out.println("收到Firebase訊息：" + dataSnapshot.toString());
+                    System.out.println("");
+                    if (data_list.size() == 0) {
+                        for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
 
 
-                        Obj_Marker om = new Obj_Marker();
+                            Obj_Marker om = new Obj_Marker();
 
-                        System.out.println("收到Firebase訊息開始初始化data無資料");
+                            System.out.println("收到Firebase訊息開始初始化data無資料");
 //                        System.out.println("收到Firebase訊息0:" + chatSnapshot.getKey());
-                        om.setPhoneid(chatSnapshot.getKey());
+                            om.setPhoneid(chatSnapshot.getKey());
 //                        System.out.println("收到Firebase訊息1:" + (String) chatSnapshot.child("name").getValue());
-                        om.setName((String) chatSnapshot.child("name").getValue());
+                            om.setName((String) chatSnapshot.child("name").getValue());
 //                        System.out.println("收到Firebase訊息2:" + (String) chatSnapshot.child("image").getValue());
-                        om.setImage((String) chatSnapshot.child("image").getValue());
-//                        System.out.println("收到Firebase訊息3:" + (String) chatSnapshot.child("lat").getValue());
-                        om.setLat((String) chatSnapshot.child("lat").getValue());
-//                        System.out.println("收到Firebase訊息4:" + (String) chatSnapshot.child("lon").getValue());
-                        om.setLon((String) chatSnapshot.child("lon").getValue());
+                            om.setImage((String) chatSnapshot.child("image").getValue());
+
+                            om.setLat((String) chatSnapshot.child("lat").getValue());
+
+                            om.setLon((String) chatSnapshot.child("lon").getValue());
 //                        System.out.println("收到Firebase訊息5:" + (String) chatSnapshot.child("Msg").getValue());
-                        om.setMsg((String) chatSnapshot.child("Msg").getValue());
+                            om.setMsg((String) chatSnapshot.child("Msg").getValue());
 //                        System.out.println("收到Firebase訊息6:" + (String) chatSnapshot.child("online").getValue());
 //                        om.setOnline((String) chatSnapshot.child("online").getValue());
-                        db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
+                            db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
 
-                        System.out.println("收到Firebase訊息結束初始化data無資料");
-                        data.add(om);
-                        System.out.println("收到Firebase訊息結束初始化data無資料 數量：" + data.size());
-                    }
-                    drawMarker(null, pic);
-
-                } else {
-                    for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
-
-                        if (((String) chatSnapshot.child("online").getValue()).equals("false")) {
-                            for (int i = 0; i < data.size(); i++) {
-                                if (data.get(i).getPhoneid() == chatSnapshot.getKey()) {
-                                    System.out.println("收到Firebase訊息開始有人離線");
-                                    System.out.println("收到Firebase訊息開始有人離線移除" + data.get(i).getPhoneid());
-                                    data.remove(i);
-                                }
-
-                            }
-
-                        } else {
-                            System.out.println("收到Firebase訊息1111111111111:" + chatSnapshot.getKey());
-                            for (int i = 0; i < data.size(); i++) {
-                                //  System.out.println("收到Firebase訊息2222222222222:"+data.get(i).getPhoneid());
-                                if ((data.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
-
-                                    System.out.println("收到Firebase訊息333333333333:" + chatSnapshot.getKey());
-                                    data.get(i).setPhoneid(chatSnapshot.getKey());
-//                                  System.out.println("收到Firebase訊息1:" + (String) chatSnapshot.child("name").getValue());
-                                    data.get(i).setName((String) chatSnapshot.child("name").getValue());
-//                                  System.out.println("收到Firebase訊息2:" + (String) chatSnapshot.child("image").getValue());
-                                    data.get(i).setImage((String) chatSnapshot.child("image").getValue());
-//                                  System.out.println("收到Firebase訊息3:" + (String) chatSnapshot.child("lat").getValue());
-                                    data.get(i).setLat((String) chatSnapshot.child("lat").getValue());
-//                                  System.out.println("收到Firebase訊息4:" + (String) chatSnapshot.child("lon").getValue());
-                                    data.get(i).setLon((String) chatSnapshot.child("lon").getValue());
-                                    //System.out.println("收到Firebase訊息5:" + (String) chatSnapshot.child("Msg").getValue());
-                                    data.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
-                                    //System.out.println("收到Firebase訊息6:" + (String) chatSnapshot.child("online").getValue());
-                                    data.get(i).setOnline((String) chatSnapshot.child("online").getValue());
+                            System.out.println("收到Firebase訊息結束初始化data無資料");
+                            data_list.add(om);
+                            System.out.println("收到Firebase訊息結束初始化data無資料 數量：" + data_list.size());
+                        }
+                       if(drawMarker_bool)
+                       {
+                           drawMarker(null, pic , data_list);
+                       }
 
 
+
+                    } else {
+                        for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
+
+                            System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+                            for (int i = 0; i < data_list.size(); i++) {
+                                if ((data_list.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
+                                    System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+
+                                    data_list.get(i).setPhoneid(chatSnapshot.getKey());
+                                    data_list.get(i).setName((String) chatSnapshot.child("name").getValue());
+                                    data_list.get(i).setImage((String) chatSnapshot.child("image").getValue());
+                                    data_list.get(i).setLat((String) chatSnapshot.child("lat").getValue());
+                                      data_list.get(i).setLon((String) chatSnapshot.child("lon").getValue());
+                                    data_list.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
+                                    data_list.get(i).setOnline((String) chatSnapshot.child("online").getValue());
                                     db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
                                     data_msg = db.select_msg();
                                     am.change(data_msg);
-
                                     System.out.println("收到Firebase訊息結束");
                                 }
-
-
                             }
-
-
                         }
-
-
+                        if(drawMarker_bool)
+                        {
+                            drawMarker(null, pic , data_list);
+                        }
                     }
-                    drawMarker(null, pic);
-
                 }
-            }
+                @Override
+                public void onCancelled(FirebaseError firebaseError) {
+                }
+            });
+        }
 
-            @Override
-            public void onCancelled(FirebaseError firebaseError) {
 
-            }
 
-        });
+
     }
 
 
-    private LocationManager lms;
 
-    private void locationServiceInitial() {
-        lms = (LocationManager) getSystemService(LOCATION_SERVICE);    //取得系統定位服務
-        Criteria criteria = new Criteria();  //資訊提供者選取標準
-        bestProvider = lms.getBestProvider(criteria, true);    //選擇精準度最高的提供者
-        Location location = lms.getLastKnownLocation(bestProvider);
-        getLocation(location);
-    }
 
 
     private void getLocation(Location location) {    //將定位資訊顯示在畫面中
@@ -416,7 +406,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             System.out.println("longitude:" + longitude + " latitude" + latitude);
 
 
-            drawMarker(location, pic);
+          //  drawMarker(location, pic);
         } else {
             Toast.makeText(this, "無法定位座標", Toast.LENGTH_SHORT).show();
         }
@@ -426,7 +416,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Firebase_Write(null, "false", null, null, null, null, null);
+        ref.child("TalkMap").child("Marco").child(androidId).removeValue();
+       // Firebase_Write("false", "false", "false", "false", "false", "false", "false");
+        destroy =false;
         mMapView.onDestroy();
     }
 
@@ -442,10 +434,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (getService) {
             System.out.println("進入定位onResume");
 //            lms.requestLocationUpdates(bestProvider, 1000, 1, this);
-            // lms.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, this);
-
-
-            //  getCurrentLocation();
+//            lms.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, this);
+//            getCurrentLocation();
         }
     }
 
@@ -460,7 +450,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 //            lms.removeUpdates(this);    //離開頁面時停止更新
 //        }
     }
-
+    /**
+     * 初始Faceboook
+     **/
     public void facebook() {
         loginButton = (LoginButton) findViewById(R.id.login_button);
         // loginButton.setReadPermissions("email");
@@ -479,13 +471,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     @Override
                     public void onCompleted(JSONObject object, GraphResponse response) {
-                        System.out.println("FB註冊id=" + object.optString("id"));
-                        System.out.println("FB註冊email=" + object.optString("email"));
-                        System.out.println("FB註冊last_name=" + object.optString("last_name"));
-                        System.out.println("FB註冊first name=" + object.optString("first_name"));
-                        System.out.println("FB註冊address=" + object.optString("address"));//NO
-                        System.out.println("FB註冊gender=" + object.optString("gender"));
-                        System.out.println("FB註冊birthday=" + object.optString("birthday"));
+//                        System.out.println("FB註冊id=" + object.optString("id"));
+//                        System.out.println("FB註冊email=" + object.optString("email"));
+//                        System.out.println("FB註冊last_name=" + object.optString("last_name"));
+//                        System.out.println("FB註冊first name=" + object.optString("first_name"));
+//                        System.out.println("FB註冊address=" + object.optString("address"));//NO
+//                        System.out.println("FB註冊gender=" + object.optString("gender"));
+//                        System.out.println("FB註冊birthday=" + object.optString("birthday"));
                         JSONObject data = response.getJSONObject();
                         if (data.has("picture")) {
                             try {
@@ -568,7 +560,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                         String profilePicUrl = data.getJSONObject("picture").getJSONObject("data").getString("url");
                                         System.out.println("FB註冊成功url:" + profilePicUrl);
 
-                                        // Firebase_Write(null, null, null, null, profilePicUrl, null, null);
+                                        Firebase_Write(null, null, null, null, profilePicUrl, null, null);
                                         final Bitmap[] image = new Bitmap[1];
                                         try {
                                             final URL url = new URL(profilePicUrl);
@@ -629,7 +621,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         System.out.println("onActivityResult");
         callbackManager.onActivityResult(requestCode, resultCode, data);
     }
-
+    /**
+     * 初始地圖
+     **/
     private void initMap() {
         int googlePlayStatus = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         if (googlePlayStatus != ConnectionResult.SUCCESS) {
@@ -676,9 +670,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         TextView infowindows = (TextView) v.findViewById(R.id.infowindows);
 
 
-                        for (int i = 0; i < data.size(); i++) {
-                            if (data.get(i).getName().equals(marker.getTitle())) {
-                                infowindows.setText(data.get(i).getMsg());
+                        for (int i = 0; i < data_list.size(); i++) {
+                            if (data_list.get(i).getName().equals(marker.getTitle())) {
+                                infowindows.setText(data_list.get(i).getMsg());
                             }
                         }
 
@@ -692,44 +686,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    public static Bitmap GetBitmapClippedCircle(Bitmap bitmap) {
-
-        final int width = bitmap.getWidth();
-        final int height = bitmap.getHeight();
-        final Bitmap outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-
-        final Path path = new Path();
-        path.addCircle(
-                (float) (width / 2)
-                , (float) (height / 2)
-                , (float) Math.min(width, (height / 2))
-                , Path.Direction.CCW);
-
-        final Canvas canvas = new Canvas(outputBitmap);
-        canvas.clipPath(path);
-        canvas.drawBitmap(bitmap, 0, 0, null);
-        return outputBitmap;
-    }
-
-    public static Bitmap zoomImage(Bitmap bgimage, double newWidth,
-                                   double newHeight) {
-
-
+    /**
+     * 縮放圖片function
+     **/
+    public static Bitmap zoomImage(Bitmap bgimage, double newWidth, double newHeight) {
         if (bgimage == null) {
             System.out.println("沒照片");
 
             return null;
         }
-
-        // 获取这个图片的宽和高
+        //獲取圖片的寬與高
         float width = bgimage.getWidth();
         float height = bgimage.getHeight();
-        // 创建操作图片用的matrix对象
+        //創建操作圖片用的matrix對象
         Matrix matrix = new Matrix();
-        // 计算宽高缩放率
+        //計算長寬縮放比例
         float scaleWidth = ((float) newWidth) / width;
         float scaleHeight = ((float) newHeight) / height;
-        // 缩放图片动作
+        //縮放圖片動作
         matrix.postScale(scaleWidth, scaleHeight);
         Bitmap bitmap = Bitmap.createBitmap(bgimage, 0, 0, (int) width,
                 (int) height, matrix, true);
@@ -739,36 +713,52 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     Marker marker;
     boolean move = true;
 
-    private void drawMarker(Location location, Bitmap pic) {
+    private void drawMarker(Location location, Bitmap pic , ArrayList<Obj_Marker> datalist) {
 
 
         if (mGoogleMap != null) {
             mGoogleMap.clear();
         }
 
-        for (int i = 0; i < data.size(); i++) {
-            System.out.println("連線個數：" + data.size());
+        for (int i = 0; i < datalist.size(); i++) {
+            System.out.println("連線個數：" + datalist.size());
             BitmapDescriptor icon = null;
-            if (data.get(i).getPic() == null) {
+            if (datalist.get(i).getPic() == null) {
                 icon = BitmapDescriptorFactory.fromBitmap(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.unknow), 100, 100));
             } else {
-                icon = BitmapDescriptorFactory.fromBitmap(data.get(i).getPic());
+                icon = BitmapDescriptorFactory.fromBitmap(datalist.get(i).getPic());
 
             }
 
 
             if (mGoogleMap != null) {
                 //
-                LatLng gps = new LatLng(Double.parseDouble(data.get(i).getLat()), Double.parseDouble(data.get(i).getLon()));
-                marker = mGoogleMap.addMarker(new MarkerOptions()
-                        .position(gps)
-                        .icon(icon)
-                        .title(data.get(i).getName()));
+                try {
+
+                  if(datalist.size()>0)
+                  {
+
+                  if(datalist.get(i).getLat() != null &datalist.get(i).getLon() != null)
+                  {
+                      System.out.println("大暴死:"+datalist.get(i).getLat());
+                      LatLng gps = new LatLng(Double.parseDouble(datalist.get(i).getLat()), Double.parseDouble(datalist.get(i).getLon()));
+                      marker = mGoogleMap.addMarker(new MarkerOptions()
+                              .position(gps)
+                              .icon(icon)
+                              .title(datalist.get(i).getName()));
+
+                      if (move == true) {
+                          mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+                          move = false;
+                      }
+                  }
 
 
-                if (move == true) {
-                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
-                    move = false;
+                      }
+
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                    System.out.println("錯誤："+e);
                 }
 
 
@@ -844,8 +834,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
-        if(AccessToken.getCurrentAccessToken() != null && com.facebook.Profile.getCurrentProfile() != null)
-        {
+        if (AccessToken.getCurrentAccessToken() != null && com.facebook.Profile.getCurrentProfile() != null) {
             MenuItem menuItem = menu.findItem(R.id.action_FBlogin);
             menuItem.setTitle("FB登出");
         }
@@ -873,6 +862,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
 
             Button checklogin = (Button) dialog.findViewById(R.id.check_login);
+            Button check_cencel = (Button) dialog.findViewById(R.id.check_cencel);
             final EditText set_name = (EditText) dialog.findViewById(R.id.set_name);
             final EditText set_team = (EditText) dialog.findViewById(R.id.set_team);
             checklogin.setOnClickListener(new View.OnClickListener() {
@@ -882,6 +872,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     saveData(set_name.getText().toString(), set_team.getText().toString());
                     readData();
+                    dialog.dismiss();
+                }
+            });
+            check_cencel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
                     dialog.dismiss();
                 }
             });
@@ -896,7 +892,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         if (id == R.id.action_FBlogin) {
-
 
 
             if (AccessToken.getCurrentAccessToken() != null && com.facebook.Profile.getCurrentProfile() != null) {
@@ -987,13 +982,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         user_name = ((settings.getString(title_name, "")));
         user_team = ((settings.getString(title_team, "")));
 
-        if(user_name!=null)
-        {
+        if (user_name != null) {
             Firebase_Write(user_name, null, null, null, null, null, null);
 
         }
-        if(user_team !=null)
-        {
+        if (user_team != null) {
 
 
         }
@@ -1023,5 +1016,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    public static Bitmap GetBitmapClippedCircle(Bitmap bitmap) {
+
+        final int width = bitmap.getWidth();
+        final int height = bitmap.getHeight();
+        final Bitmap outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        final Path path = new Path();
+        path.addCircle(
+                (float) (width / 2)
+                , (float) (height / 2)
+                , (float) Math.min(width, (height / 2))
+                , Path.Direction.CCW);
+
+        final Canvas canvas = new Canvas(outputBitmap);
+        canvas.clipPath(path);
+        canvas.drawBitmap(bitmap, 0, 0, null);
+        return outputBitmap;
+    }
+
+    private void locationServiceInitial() {
+        lms = (LocationManager) getSystemService(LOCATION_SERVICE);    //取得系統定位服務
+        Criteria criteria = new Criteria();  //資訊提供者選取標準
+        bestProvider = lms.getBestProvider(criteria, true);    //選擇精準度最高的提供者
+        Location location = lms.getLastKnownLocation(bestProvider);
+        getLocation(location);
+    }
 
 }
