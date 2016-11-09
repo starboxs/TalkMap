@@ -42,20 +42,27 @@ public class SQLite extends SQLiteOpenHelper {
 
 
     synchronized public void insert_msg(String name, String msg, String time) {
-        SQLiteDatabase sqldb = getReadableDatabase();
-        System.out.println("有重複資料");
-        String record = "SELECT *  FROM " + MSG + " WHERE "+MSG_TIME +" = '"+time+"'";
-        Cursor cursor = sqldb.rawQuery(record, null);
-        System.out.println("有重複資料："+cursor);
-        while (cursor.moveToNext()) {
-          return;
-        }
-        ContentValues cv = new ContentValues();
-        cv.put(MSG_NAME, name);
-        cv.put(MSG_MSG, msg);
-        cv.put(MSG_TIME, time);
-        sqldb.insert(MSG, null, cv);
-        close(sqldb);
+
+      if(time  != "")
+      {
+          SQLiteDatabase sqldb = getReadableDatabase();
+          System.out.println("有重複資料");
+          String record = "SELECT *  FROM " + MSG + " WHERE "+MSG_TIME +" = '"+time+"'";
+          Cursor cursor = sqldb.rawQuery(record, null);
+          System.out.println("有重複資料："+cursor);
+          while (cursor.moveToNext()) {
+              return;
+          }
+          ContentValues cv = new ContentValues();
+          cv.put(MSG_NAME, name);
+          cv.put(MSG_MSG, msg);
+          cv.put(MSG_TIME, time);
+          sqldb.insert(MSG, null, cv);
+          close(sqldb);
+
+      }
+
+
 
     }
 
@@ -70,8 +77,8 @@ public class SQLite extends SQLiteOpenHelper {
 
         ArrayList<Obj_Msg> list = new ArrayList<Obj_Msg>();
         SQLiteDatabase sqldb = getReadableDatabase();
-        // String record = "SELECT *  FROM " + MSG + " ORDER BY Convert(datetime," + MSG_TIME + ") desc";
-        String record = "SELECT *  FROM " + MSG;
+         String record = "SELECT *  FROM " + MSG + " ORDER BY  MSG_TIME  desc";
+       // String record = "SELECT *  FROM " + MSG;
 
         Cursor cursor = sqldb.rawQuery(record, null);
         while (cursor.moveToNext()) {

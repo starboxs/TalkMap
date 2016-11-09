@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private String user_name = "";
     private String user_team = "";
-
+    private String user_fbimage = "";
     private Menu action_menu;
 
     private String Firebase_url = "https://talkmap-6c910.firebaseio.com/";
@@ -103,6 +103,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String quick_save = "Quick_Save";
     private static final String title_name = "Title_Name";
     private static final String title_team = "Title_Team";
+    private static final String title_fbimage = "Title_FB_image";
+
     private LocationManager lms;
     private SQLite db;
     private ListView lv_msg;
@@ -163,10 +165,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ref = new Firebase(Firebase_url);
         androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
-
-
         Firebase_read();
-
+        //讀取暫存資料 名稱與群組
         readData();
         //取得系統定位服務
         LocationManager status = (LocationManager) (this.getSystemService(Context.LOCATION_SERVICE));
@@ -211,11 +211,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
-    public void addview()
-    {
-test_layout.removeAllViews();
-        for(int i = 0  ; i<data_list.size();i++ )
-        {
+    public void addview() {
+        test_layout.removeAllViews();
+        for (int i = 0; i < data_list.size(); i++) {
 
             im = new ImageView(this);
             im.setTag(data_list.get(i).getName().toString());
@@ -223,25 +221,20 @@ test_layout.removeAllViews();
             im.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    System.out.println("test按鈕"+v.getTag());
+                    System.out.println("test按鈕" + v.getTag());
 
-                    for(int i =  0 ; i<data_list.size();i++ )
-                    {
-                        if(data_list.get(i).getName() ==v.getTag())
-                        {
+                    for (int i = 0; i < data_list.size(); i++) {
+                        if (data_list.get(i).getName() == v.getTag()) {
                             LatLng gps = new LatLng(Double.parseDouble(data_list.get(i).getLat()), Double.parseDouble(data_list.get(i).getLon()));
-                                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+                            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
                         }
 
                     }
 
 
-
-
-
                 }
             });
-            test_layout.addView(im , 120 ,120 );
+            test_layout.addView(im, 120, 120);
         }
     }
 
@@ -253,9 +246,9 @@ test_layout.removeAllViews();
     protected void onStart() {
         super.onStart();
 
-        test_layout = (LinearLayout)findViewById(R.id.test_layout);
+        test_layout = (LinearLayout) findViewById(R.id.test_layout);
 
-       // setContentView(test_layout);
+        // setContentView(test_layout);
         addview();
         Firebase_Write(null, "true", null, null, null, null, null);
         Firebase_Write(null, "true", null, null, null, "", "");
@@ -267,7 +260,6 @@ test_layout.removeAllViews();
         lv_msg.setAdapter(am);
 
         et_msg = (EditText) findViewById(R.id.et_msg);
-
 
 
 //        msg_clean.setOnClickListener(new View.OnClickListener() {
@@ -320,8 +312,7 @@ test_layout.removeAllViews();
         //team           //uuid                         //屬性            //變數
 
 
-        if(name == "false" && online == "false" &&lat == "false" &&lon == "false" &&image == "false" &&msg == "false" &&time == "false" )
-        {
+        if (name == "false" && online == "false" && lat == "false" && lon == "false" && image == "false" && msg == "false" && time == "false") {
 
             return;
         }
@@ -351,34 +342,38 @@ test_layout.removeAllViews();
         }
 
     }
+
+    private int total_count = 0;
     /**
      * 讀取Firebase
      **/
-    private  boolean destroy =true;
+    private boolean destroy = true;
+
     public void Firebase_read() {
         System.out.println("資料庫");
 
-        if(destroy)
-        {
+        if (destroy) {
             ref.child("TalkMap").child("Marco").addValueEventListener(new ValueEventListener() {
 
 
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
+
+
                     System.out.println("收到Firebase訊息：" + dataSnapshot.toString());
                     System.out.println("");
+
+                    int count = 0;
                     if (data_list.size() == 0) {
                         for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
 
-
                             Obj_Marker om = new Obj_Marker();
-
                             System.out.println("收到Firebase訊息開始初始化data無資料");
 //                        System.out.println("收到Firebase訊息0:" + chatSnapshot.getKey());
                             om.setPhoneid(chatSnapshot.getKey());
 //                        System.out.println("收到Firebase訊息1:" + (String) chatSnapshot.child("name").getValue());
                             om.setName((String) chatSnapshot.child("name").getValue());
-//                        System.out.println("收到Firebase訊息2:" + (String) chatSnapshot.child("image").getValue());
+                            System.out.println("收到Firebase訊息2:" + (String) chatSnapshot.child("image").getValue());
                             om.setImage((String) chatSnapshot.child("image").getValue());
 
                             om.setLat((String) chatSnapshot.child("lat").getValue());
@@ -387,62 +382,112 @@ test_layout.removeAllViews();
 //                        System.out.println("收到Firebase訊息5:" + (String) chatSnapshot.child("Msg").getValue());
                             om.setMsg((String) chatSnapshot.child("Msg").getValue());
 //                        System.out.println("收到Firebase訊息6:" + (String) chatSnapshot.child("online").getValue());
-//                        om.setOnline((String) chatSnapshot.child("online").getValue());
+//                        om.setOnline((String)true chatSnapshot.child("online").getValue());
                             db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
 
                             System.out.println("收到Firebase訊息結束初始化data無資料");
                             data_list.add(om);
                             System.out.println("收到Firebase訊息結束初始化data無資料 數量：" + data_list.size());
+                            Firebase_Write(null, "false", null, null, null, null, null);
+                            count++;
                         }
-                       if(drawMarker_bool)
-                       {
-                           drawMarker(null, pic , data_list);
-                       }
-
-
-
+                        if (drawMarker_bool) {
+                            drawMarker(null, pic, data_list);
+                        }
+                        total_count = count;
+                        System.out.println("總加入人數1："+count);
                     } else {
                         for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
 
-                            System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
-                            for (int i = 0; i < data_list.size(); i++) {
-                                if ((data_list.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
-                                    System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+                            System.out.println("新加入的人員1" + chatSnapshot.child("online").getValue());
+                            if ((chatSnapshot.child("online").getValue()) == null) {
+                                Obj_Marker om = new Obj_Marker();
 
-                                    data_list.get(i).setPhoneid(chatSnapshot.getKey());
-                                    data_list.get(i).setName((String) chatSnapshot.child("name").getValue());
-                                    data_list.get(i).setImage((String) chatSnapshot.child("image").getValue());
-                                    data_list.get(i).setLat((String) chatSnapshot.child("lat").getValue());
-                                      data_list.get(i).setLon((String) chatSnapshot.child("lon").getValue());
-                                    data_list.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
-                                    data_list.get(i).setOnline((String) chatSnapshot.child("online").getValue());
-                                    db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
-                                    data_msg = db.select_msg();
-                                    am.change(data_msg);
-                                    System.out.println("收到Firebase訊息結束");
+                                System.out.println("新加入的人員2");
+                                om.setPhoneid(chatSnapshot.getKey());
+                                om.setName((String) chatSnapshot.child("name").getValue());
+                                om.setImage((String) chatSnapshot.child("image").getValue());
+                                om.setLat((String) chatSnapshot.child("lat").getValue());
+                                om.setLon((String) chatSnapshot.child("lon").getValue());
+                                om.setMsg((String) chatSnapshot.child("Msg").getValue());
+                                db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
+                                data_list.add(om);
+                                Firebase_Write(null, "false", null, null, null, null, null);
+                                count++;
+                            } else {
+                                System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+                                for (int i = 0; i < data_list.size(); i++) {
+                                    if ((data_list.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
+                                        System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+
+                                        data_list.get(i).setPhoneid(chatSnapshot.getKey());
+                                        data_list.get(i).setName((String) chatSnapshot.child("name").getValue());
+                                        data_list.get(i).setImage((String) chatSnapshot.child("image").getValue());
+                                        data_list.get(i).setLat((String) chatSnapshot.child("lat").getValue());
+                                        data_list.get(i).setLon((String) chatSnapshot.child("lon").getValue());
+                                        data_list.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
+                                        data_list.get(i).setOnline((String) chatSnapshot.child("online").getValue());
+                                        db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
+                                        data_msg = db.select_msg();
+                                        am.change(data_msg);
+                                        System.out.println("收到Firebase訊息結束");
+                                    }
                                 }
+                                count++;
                             }
                         }
-                        if(drawMarker_bool)
-                        {
-                            drawMarker(null, pic , data_list);
+
+                        if (drawMarker_bool) {
+                            drawMarker(null, pic, data_list);
                             addview();
                         }
+                        System.out.println("總加入人數2:"+count);
+                        if(total_count != count)
+                        {
+                            System.out.println("總加入人數出現錯誤");
+
+                            if(total_count <count)
+                            {
+                                Toast.makeText(MainActivity.this, "有人加入了", Toast.LENGTH_SHORT).show();
+
+                            }
+                            else
+                            {
+                                Toast.makeText(MainActivity.this, "有人離開了", Toast.LENGTH_SHORT).show();
+                            }
+                            total_count = count;
+                        }
                     }
+
+
+
                 }
+
                 @Override
                 public void onCancelled(FirebaseError firebaseError) {
+                    System.out.println("新加入的人員假的");
                 }
             });
         }
 
 
-
-
     }
 
-
-
+    public void remove_perosnal(int old_count , int new_count)
+    {
+        if(old_count < new_count)
+        {
+            for(int i = 0  ; i<new_count;i++)
+            {
+            }
+        }
+        else
+        {
+            for(int i = 0  ; i<old_count;i++)
+            {
+            }
+        }
+    }
 
 
     private void getLocation(Location location) {    //將定位資訊顯示在畫面中
@@ -454,7 +499,7 @@ test_layout.removeAllViews();
             System.out.println("longitude:" + longitude + " latitude" + latitude);
 
 
-          //  drawMarker(location, pic);
+            //  drawMarker(location, pic);
         } else {
             Toast.makeText(this, "無法定位座標", Toast.LENGTH_SHORT).show();
         }
@@ -465,9 +510,10 @@ test_layout.removeAllViews();
     protected void onDestroy() {
         super.onDestroy();
         ref.child("TalkMap").child("Marco").child(androidId).removeValue();
-       // Firebase_Write("false", "false", "false", "false", "false", "false", "false");
-        destroy =false;
+        // Firebase_Write("false", "false", "false", "false", "false", "false", "false");
+        destroy = false;
         mMapView.onDestroy();
+        android.os.Process.killProcess(android.os.Process.myPid());
     }
 
     private boolean getService = false;
@@ -498,6 +544,7 @@ test_layout.removeAllViews();
 //            lms.removeUpdates(this);    //離開頁面時停止更新
 //        }
     }
+
     /**
      * 初始Faceboook
      **/
@@ -607,7 +654,7 @@ test_layout.removeAllViews();
                                     try {
                                         String profilePicUrl = data.getJSONObject("picture").getJSONObject("data").getString("url");
                                         System.out.println("FB註冊成功url:" + profilePicUrl);
-
+                                        saveData(null, null, profilePicUrl);
                                         Firebase_Write(null, null, null, null, profilePicUrl, null, null);
                                         final Bitmap[] image = new Bitmap[1];
                                         try {
@@ -669,6 +716,7 @@ test_layout.removeAllViews();
         System.out.println("onActivityResult");
         callbackManager.onActivityResult(requestCode, resultCode, data);
     }
+
     /**
      * 初始地圖
      **/
@@ -761,7 +809,7 @@ test_layout.removeAllViews();
     Marker marker;
     boolean move = true;
 
-    private void drawMarker(Location location, Bitmap pic , ArrayList<Obj_Marker> datalist) {
+    private void drawMarker(Location location, Bitmap pic, ArrayList<Obj_Marker> datalist) {
 
 
         if (mGoogleMap != null) {
@@ -776,7 +824,7 @@ test_layout.removeAllViews();
                 datalist.get(i).setPic(zoomImage(BitmapFactory.decodeResource(this.getResources(), R.drawable.unknow), 100, 100));
             } else {
                 icon = BitmapDescriptorFactory.fromBitmap(datalist.get(i).getPic());
-
+                System.out.println("");
             }
 
 
@@ -784,29 +832,27 @@ test_layout.removeAllViews();
                 //
                 try {
 
-                  if(datalist.size()>0)
-                  {
+                    if (datalist.size() > 0) {
 
-                  if(datalist.get(i).getLat() != null &datalist.get(i).getLon() != null)
-                  {
-                      LatLng gps = new LatLng(Double.parseDouble(datalist.get(i).getLat()), Double.parseDouble(datalist.get(i).getLon()));
-                      marker = mGoogleMap.addMarker(new MarkerOptions()
-                              .position(gps)
-                              .icon(icon)
-                              .title(datalist.get(i).getName()));
+                        if (datalist.get(i).getLat() != null & datalist.get(i).getLon() != null) {
+                            LatLng gps = new LatLng(Double.parseDouble(datalist.get(i).getLat()), Double.parseDouble(datalist.get(i).getLon()));
+                            marker = mGoogleMap.addMarker(new MarkerOptions()
+                                    .position(gps)
+                                    .icon(icon)
+                                    .title(datalist.get(i).getName()));
 
-                      if (move == true) {
-                          mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
-                          move = false;
-                      }
-                  }
+                            if (move == true) {
+                                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+                                move = false;
+                            }
+                        }
 
 
-                      }
+                    }
 
                 } catch (NumberFormatException e) {
                     e.printStackTrace();
-                    System.out.println("錯誤："+e);
+                    System.out.println("錯誤：" + e);
                 }
 
 
@@ -891,6 +937,44 @@ test_layout.removeAllViews();
         return true;
     }
 
+    public void set_info() {
+
+        final Dialog dialog = new Dialog(MainActivity.this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_login);
+        dialog.setCancelable(false);
+
+
+        Button checklogin = (Button) dialog.findViewById(R.id.check_login);
+        Button check_cencel = (Button) dialog.findViewById(R.id.check_cencel);
+        final EditText set_name = (EditText) dialog.findViewById(R.id.set_name);
+        final EditText set_team = (EditText) dialog.findViewById(R.id.set_team);
+        checklogin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //  System.out.println("googogogogogog:"+set_name.getText().toString() +" "+ set_team.getText().toString());
+
+                saveData(set_name.getText().toString(), set_team.getText().toString(), null);
+                readData();
+                dialog.dismiss();
+            }
+        });
+        check_cencel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.getWindow().setLayout(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        dialog.show();
+
+
+    }
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -903,38 +987,7 @@ test_layout.removeAllViews();
 
             System.out.println("設定");
 
-            final Dialog dialog = new Dialog(MainActivity.this);
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-            dialog.setContentView(R.layout.dialog_login);
-            dialog.setCancelable(false);
-
-
-            Button checklogin = (Button) dialog.findViewById(R.id.check_login);
-            Button check_cencel = (Button) dialog.findViewById(R.id.check_cencel);
-            final EditText set_name = (EditText) dialog.findViewById(R.id.set_name);
-            final EditText set_team = (EditText) dialog.findViewById(R.id.set_team);
-            checklogin.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    //  System.out.println("googogogogogog:"+set_name.getText().toString() +" "+ set_team.getText().toString());
-
-                    saveData(set_name.getText().toString(), set_team.getText().toString());
-                    readData();
-                    dialog.dismiss();
-                }
-            });
-            check_cencel.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    dialog.dismiss();
-                }
-            });
-
-            dialog.getWindow().setLayout(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            dialog.show();
-
+            set_info();
 
             return true;
         }
@@ -1004,6 +1057,8 @@ test_layout.removeAllViews();
                                 public void onClick(DialogInterface dialog, int which) {
                                     Firebase_Write(null, "false", null, null, null, null, null);
                                     finish();
+
+
                                 }
                             })
                     .setNegativeButton("取消",
@@ -1017,28 +1072,37 @@ test_layout.removeAllViews();
     }
 
 
-    public void saveData(String name, String team) {
+    public void saveData(String name, String team, String fb_image) {
         if (name != null) {
             settings.edit().putString(title_name, name).commit();
         }
         if (team != null) {
             settings.edit().putString(title_team, team).commit();
         }
+        if (fb_image != null) {
+            settings.edit().putString(title_fbimage, fb_image).commit();
+        }
     }
 
     public void readData() {
         user_name = ((settings.getString(title_name, "")));
         user_team = ((settings.getString(title_team, "")));
+        user_fbimage = ((settings.getString(title_fbimage, "")));
 
         if (user_name != null) {
             Firebase_Write(user_name, null, null, null, null, null, null);
 
+        } else {
+            set_info();
         }
         if (user_team != null) {
 
 
         }
+        if (user_fbimage != null) {
+            Firebase_Write(null, null, null, null, user_fbimage, null, null);
 
+        }
     }
 
 
