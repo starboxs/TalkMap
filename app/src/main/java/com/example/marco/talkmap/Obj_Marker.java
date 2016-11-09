@@ -130,8 +130,6 @@ private  String time ;
 
     public static Bitmap zoomImage(Bitmap bgimage, double newWidth,
                                    double newHeight) {
-
-
         if (bgimage == null) {
             System.out.println("沒照片");
 

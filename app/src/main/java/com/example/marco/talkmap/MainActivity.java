@@ -2,6 +2,7 @@ package com.example.marco.talkmap;
 
 import android.app.Dialog;
 import android.content.ClipData;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -10,6 +11,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -19,8 +21,11 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Base64;
@@ -42,6 +47,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -71,13 +77,20 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.wearable.DataApi;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.security.MessageDigest;
@@ -86,6 +99,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, LocationListener {
@@ -186,7 +200,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.setTitle("TalkMap");
-        toolbar.setLogo(R.mipmap.logo);
+        toolbar.setLogo(R.mipmap.logo3);
         mMapView = (MapView) findViewById(R.id.mapview);
         setSupportActionBar(toolbar);
 
@@ -343,6 +357,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    ArrayList old_list = new ArrayList();
+    ArrayList new_list = new ArrayList();
     private int total_count = 0;
     /**
      * 讀取Firebase
@@ -358,110 +374,124 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-
-
-                    System.out.println("收到Firebase訊息：" + dataSnapshot.toString());
-                    System.out.println("");
-
+                    old_list.clear();
                     int count = 0;
                     if (data_list.size() == 0) {
                         for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
-
                             Obj_Marker om = new Obj_Marker();
-                            System.out.println("收到Firebase訊息開始初始化data無資料");
-//                        System.out.println("收到Firebase訊息0:" + chatSnapshot.getKey());
                             om.setPhoneid(chatSnapshot.getKey());
-//                        System.out.println("收到Firebase訊息1:" + (String) chatSnapshot.child("name").getValue());
                             om.setName((String) chatSnapshot.child("name").getValue());
-                            System.out.println("收到Firebase訊息2:" + (String) chatSnapshot.child("image").getValue());
                             om.setImage((String) chatSnapshot.child("image").getValue());
-
                             om.setLat((String) chatSnapshot.child("lat").getValue());
-
                             om.setLon((String) chatSnapshot.child("lon").getValue());
-//                        System.out.println("收到Firebase訊息5:" + (String) chatSnapshot.child("Msg").getValue());
                             om.setMsg((String) chatSnapshot.child("Msg").getValue());
-//                        System.out.println("收到Firebase訊息6:" + (String) chatSnapshot.child("online").getValue());
-//                        om.setOnline((String)true chatSnapshot.child("online").getValue());
                             db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
-
-                            System.out.println("收到Firebase訊息結束初始化data無資料");
                             data_list.add(om);
-                            System.out.println("收到Firebase訊息結束初始化data無資料 數量：" + data_list.size());
                             Firebase_Write(null, "false", null, null, null, null, null);
+                            old_list.add((String) chatSnapshot.child("name").getValue());
                             count++;
                         }
                         if (drawMarker_bool) {
                             drawMarker(null, pic, data_list);
                         }
                         total_count = count;
-                        System.out.println("總加入人數1："+count);
+                        new_list = old_list;
+                        System.out.println("總加入人數1：" + count);
                     } else {
+
                         for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
 
-                            System.out.println("新加入的人員1" + chatSnapshot.child("online").getValue());
-                            if ((chatSnapshot.child("online").getValue()) == null) {
-                                Obj_Marker om = new Obj_Marker();
+                            //  System.out.println("判斷加入與離開:" + chatSnapshot.getKey());
+                            for (int i = 0; i < data_list.size(); i++) {
+                                if ((data_list.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
+                                    System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
+                                    data_list.get(i).setPhoneid(chatSnapshot.getKey());
+                                    data_list.get(i).setName((String) chatSnapshot.child("name").getValue());
+                                    data_list.get(i).setImage((String) chatSnapshot.child("image").getValue());
+                                    data_list.get(i).setLat((String) chatSnapshot.child("lat").getValue());
+                                    data_list.get(i).setLon((String) chatSnapshot.child("lon").getValue());
+                                    data_list.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
+                                    data_list.get(i).setOnline((String) chatSnapshot.child("online").getValue());
+                                    db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
+                                    data_msg = db.select_msg();
+                                    am.change(data_msg);
+                                    System.out.println("收到Firebase訊息結束");
 
-                                System.out.println("新加入的人員2");
-                                om.setPhoneid(chatSnapshot.getKey());
-                                om.setName((String) chatSnapshot.child("name").getValue());
-                                om.setImage((String) chatSnapshot.child("image").getValue());
-                                om.setLat((String) chatSnapshot.child("lat").getValue());
-                                om.setLon((String) chatSnapshot.child("lon").getValue());
-                                om.setMsg((String) chatSnapshot.child("Msg").getValue());
-                                db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
-                                data_list.add(om);
-                                Firebase_Write(null, "false", null, null, null, null, null);
-                                count++;
-                            } else {
-                                System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
-                                for (int i = 0; i < data_list.size(); i++) {
-                                    if ((data_list.get(i).getPhoneid()).equals(chatSnapshot.getKey())) {
-                                        System.out.println("收到Firebase訊息:" + chatSnapshot.getKey());
-
-                                        data_list.get(i).setPhoneid(chatSnapshot.getKey());
-                                        data_list.get(i).setName((String) chatSnapshot.child("name").getValue());
-                                        data_list.get(i).setImage((String) chatSnapshot.child("image").getValue());
-                                        data_list.get(i).setLat((String) chatSnapshot.child("lat").getValue());
-                                        data_list.get(i).setLon((String) chatSnapshot.child("lon").getValue());
-                                        data_list.get(i).setMsg((String) chatSnapshot.child("Msg").getValue());
-                                        data_list.get(i).setOnline((String) chatSnapshot.child("online").getValue());
-                                        db.insert_msg((String) chatSnapshot.child("name").getValue(), (String) chatSnapshot.child("Msg").getValue(), (String) chatSnapshot.child("time").getValue());
-                                        data_msg = db.select_msg();
-                                        am.change(data_msg);
-                                        System.out.println("收到Firebase訊息結束");
-                                    }
                                 }
-                                count++;
                             }
+                            old_list.add((String) chatSnapshot.child("name").getValue());
+                            count++;
+
                         }
 
                         if (drawMarker_bool) {
                             drawMarker(null, pic, data_list);
                             addview();
                         }
-                        System.out.println("總加入人數2:"+count);
-                        if(total_count != count)
-                        {
+                        System.out.println("總加入人數2:" + count);
+                        if (total_count != count) {
                             System.out.println("總加入人數出現錯誤");
 
-                            if(total_count <count)
-                            {
+                            if (total_count < count) {
+
+
+                                System.out.println("判斷加入與離開(加入)：old:" + old_list.size() + " new:" + new_list.size());
                                 Toast.makeText(MainActivity.this, "有人加入了", Toast.LENGTH_SHORT).show();
 
-                            }
-                            else
-                            {
-                                Toast.makeText(MainActivity.this, "有人離開了", Toast.LENGTH_SHORT).show();
+                            } else {
+
+                                for (int i = 0; i < data_list.size(); i++) {
+
+                                }
+                                for (int i = 0; i < old_list.size(); i++) {
+
+                                }
+                                ArrayList new_list = new ArrayList();
+                                ArrayList new_list2 = new ArrayList();
+                                for (int i = 0; i < data_list.size(); i++) {
+                                    new_list.add(data_list.get(i).getName());
+                                    new_list2.add(data_list.get(i).getName());
+                                }
+
+                                for (int i = 0; i < data_list.size(); i++) {
+                                    for (int j = 0; j < old_list.size(); j++) {
+
+                                        if (new_list.get(i).toString() == old_list.get(j).toString()) {
+
+                                            System.out.println("判斷加入與離開被移除:" + new_list.get(i).toString());
+                                            new_list2.remove(i);
+
+                                            System.out.println("判斷加入與離開被移除數量："+new_list2.size() +" "+new_list2.get(0).toString());
+                                        }
+
+                                    }
+                                }
+
+
+
+                                for (int i = 0; i < data_list.size(); i++) {
+
+                                    if (data_list.get(i).getName() == new_list2.get(0).toString()) {
+                                        Toast.makeText(MainActivity.this, new_list2.get(0).toString()+"離開了", Toast.LENGTH_SHORT).show();
+                                        System.out.println("判斷加入與離開(離開):"+new_list2.get(0).toString());
+                                        data_list.remove(i);
+                                    }
+
+
+                                }
+
+
+                                System.out.println("判斷加入與離開(離開)：old:" + old_list.size() + " new:" + new_list.size());
+
                             }
                             total_count = count;
                         }
+                        new_list = old_list;
                     }
 
 
-
                 }
+
 
                 @Override
                 public void onCancelled(FirebaseError firebaseError) {
@@ -473,18 +503,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
-    public void remove_perosnal(int old_count , int new_count)
-    {
-        if(old_count < new_count)
-        {
-            for(int i = 0  ; i<new_count;i++)
-            {
+    public void remove_perosnal(int old_count, int new_count) {
+        if (old_count < new_count) {
+            for (int i = 0; i < new_count; i++) {
             }
-        }
-        else
-        {
-            for(int i = 0  ; i<old_count;i++)
-            {
+        } else {
+            for (int i = 0; i < old_count; i++) {
             }
         }
     }
@@ -710,10 +734,91 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+
+    public static String getRealFilePath(final Context context, final Uri uri) {
+        if (null == uri) return null;
+        final String scheme = uri.getScheme();
+        String data = null;
+        if (scheme == null)
+            data = uri.getPath();
+        else if (ContentResolver.SCHEME_FILE.equals(scheme)) {
+            data = uri.getPath();
+        } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)) {
+            Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Images.ImageColumns.DATA}, null, null, null);
+            if (null != cursor) {
+                if (cursor.moveToFirst()) {
+                    int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+                    if (index > -1) {
+                        data = cursor.getString(index);
+                    }
+                }
+                cursor.close();
+            }
+        }
+        return data;
+    }
+
+    Bitmap bm = null;
+    ProgressBar progressBar;
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         System.out.println("onActivityResult");
+        // 有選擇檔案
+        if (resultCode == RESULT_OK) {
+            // 取得檔案的 Uri
+            Uri uri = data.getData();
+
+
+            if (uri != null) {
+                // 利用 Uri 顯示 ImageView 圖片
+                try {
+                    ContentResolver resolver = getContentResolver();
+                    bm = MediaStore.Images.Media.getBitmap(resolver, uri);
+                    Bitmap bitmap = GetBitmapClippedCircle(zoomImage(bm, 100, 100));
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+                    byte[] data_bitmap = baos.toByteArray();
+                    FirebaseStorage storage = FirebaseStorage.getInstance();
+                    StorageReference storageRef = storage.getReferenceFromUrl("gs://talkmap-6c910.appspot.com");
+                    StorageReference mountainsRef = storageRef.child("image/" + androidId + ".jpg");
+                    UploadTask uploadTask = mountainsRef.putFile(uri);
+                    //  uploadTask = mountainsRef.putFile(data_bitmap);
+                    uploadTask = mountainsRef.putBytes(data_bitmap);
+                    System.out.println("讀取檔案上傳中");
+                    progressBar = new ProgressBar(this);
+
+
+                    uploadTask.addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception exception) {
+                            // Handle unsuccessful uploads
+                            System.out.println("讀取檔案失敗上傳" + exception);
+                        }
+                    }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
+                            Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                            System.out.println("讀取檔案成功上傳");
+
+
+                        }
+                    });
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.out.println("讀取檔案失敗上傳:" + e);
+                }
+            } else {
+                setTitle("讀取檔案無效的檔案路徑 !!");
+            }
+        } else {
+            setTitle("讀取檔案取消選擇檔案 !!");
+        }
+
+
         callbackManager.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -947,8 +1052,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         Button checklogin = (Button) dialog.findViewById(R.id.check_login);
         Button check_cencel = (Button) dialog.findViewById(R.id.check_cencel);
+        Button button = (Button) dialog.findViewById(R.id.button);
         final EditText set_name = (EditText) dialog.findViewById(R.id.set_name);
         final EditText set_team = (EditText) dialog.findViewById(R.id.set_team);
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 建立 "選擇檔案 Action" 的 Intent
+                Intent intent = new Intent(Intent.ACTION_PICK);
+
+                // 過濾檔案格式
+                intent.setType("image/*");
+
+                // 建立 "檔案選擇器" 的 Intent  (第二個參數: 選擇器的標題)
+                Intent destIntent = Intent.createChooser(intent, "選擇檔案");
+
+                // 切換到檔案選擇器 (它的處理結果, 會觸發 onActivityResult 事件)
+                startActivityForResult(destIntent, 0);
+            }
+        });
+
+
         checklogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1127,6 +1252,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void onProviderDisabled(String provider) {
 
     }
+
 
     public static Bitmap GetBitmapClippedCircle(Bitmap bitmap) {
 
