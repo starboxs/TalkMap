@@ -29,6 +29,7 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Base64;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -72,6 +73,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
@@ -102,8 +104,9 @@ import java.util.Date;
 import java.util.List;
 
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, LocationListener {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,NavigationView.OnNavigationItemSelectedListener, LocationListener {
 
+    private static String TAG = "MainActivity";
 
     private String user_name = "";
     private String user_team = "";
@@ -215,16 +218,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         try {
             mMapView.onCreate(savedInstanceState);
+
         } catch (Exception e) {
             System.out.println("mMapView.onCreate err:" + e);
         }
-        mGoogleMap = mMapView.getMap();
+
+        try
+        {
+        //    initMap();
+            
+            initilizeMap();
+        }
+        catch (Exception e)
+        {
+        }
         key();
-        initMap();
+        
         facebook();
 
     }
-
+    private void initilizeMap()
+    {
+        if ( mGoogleMap == null )
+        {
+            mMapView.getMapAsync(this);
+        }
+    }
     public void addview() {
         test_layout.removeAllViews();
         for (int i = 0; i < data_list.size(); i++) {
@@ -239,8 +258,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     for (int i = 0; i < data_list.size(); i++) {
                         if (data_list.get(i).getName() == v.getTag()) {
-                            LatLng gps = new LatLng(Double.parseDouble(data_list.get(i).getLat()), Double.parseDouble(data_list.get(i).getLon()));
-                            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+
+                            if(data_list.get(i).getLat()!=null)
+                            {
+                                LatLng gps = new LatLng(Double.parseDouble(data_list.get(i).getLat()), Double.parseDouble(data_list.get(i).getLon()));
+                                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+                            }
+                            else
+                            {
+                                Toast.makeText(MainActivity.this, "無座標顯示", Toast.LENGTH_SHORT).show();
+                            }
+
                         }
 
                     }
@@ -544,10 +572,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onResume() {
-        super.onResume();
         mMapView.onResume();
-
-
+        super.onResume();
+        initilizeMap();
         System.out.println("進入onResume");
         if (getService) {
             System.out.println("進入定位onResume");
@@ -826,9 +853,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * 初始地圖
      **/
     private void initMap() {
+        Log.i(TAG, "initMap: 進場");
         int googlePlayStatus = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         if (googlePlayStatus != ConnectionResult.SUCCESS) {
-            System.out.println("成功");
+            Log.i(TAG, "initMap: 成功");
             GooglePlayServicesUtil.getErrorDialog(googlePlayStatus, this, -1).show();
             finish();
         } else {
@@ -838,7 +866,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 System.out.println("測試");
-
+                Log.i(TAG, "initMap: 測試");
                 mGoogleMap.setOnMyLocationChangeListener(myLocationChangeListener);
                 mGoogleMap.getUiSettings().setAllGesturesEnabled(true);
 
@@ -1281,4 +1309,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         getLocation(location);
     }
 
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        Log.i(TAG, "onMapReady: "+googleMap);
+        mGoogleMap = googleMap;
+        initMap();
+        //setUpMap();
+    }
 }

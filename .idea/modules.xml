@@ -4,7 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/TalkMap.iml" filepath="$PROJECT_DIR$/TalkMap.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/facebook-android-sdk-4.16.1/facebook-android-sdk-4.16.1.iml" filepath="$PROJECT_DIR$/facebook-android-sdk-4.16.1/facebook-android-sdk-4.16.1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/facebook-android-sdk-4.18.0/facebook-android-sdk-4.18.0.iml" filepath="$PROJECT_DIR$/facebook-android-sdk-4.18.0/facebook-android-sdk-4.18.0.iml" />
     </modules>
   </component>
 </project>
